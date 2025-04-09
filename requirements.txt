@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+matplotlib
+seaborn
+scikit-learn
+openpyxl
+prophet
+email-validator
+jinja2
