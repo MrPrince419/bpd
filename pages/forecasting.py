@@ -4,63 +4,56 @@ from prophet import Prophet
 import matplotlib.pyplot as plt
 
 def forecasting_page():
-    st.title("📈 Revenue Forecasting")
+    st.title("🔮 Forecasting - Business Trend Prediction")
 
-    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-    if uploaded_file is None:
-        st.info("Please upload a CSV file to see forecasting.")
+    if "uploaded_data" not in st.session_state or st.session_state.uploaded_data is None:
+        st.warning("⚠️ Please upload your dataset on the Home page first.")
         return
 
-    try:
-        data = pd.read_csv(uploaded_file)
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        return
+    data = st.session_state.uploaded_data.copy()
 
-    # Sidebar config
-    st.sidebar.header("Column Configuration")
+    st.sidebar.header("📅 Forecast Settings")
     date_col = st.sidebar.selectbox("Select Date Column", options=data.columns)
     revenue_col = st.sidebar.selectbox("Select Revenue Column", options=data.columns)
 
-    # Convert date column
-    data[date_col] = pd.to_datetime(data[date_col], errors='coerce')
-    data = data.dropna(subset=[date_col, revenue_col])
-
-    if data.empty:
-        st.warning("No valid data after cleaning. Please check your file.")
+    # Convert and clean the selected columns
+    try:
+        data[date_col] = pd.to_datetime(data[date_col], errors="coerce")
+        data[revenue_col] = pd.to_numeric(data[revenue_col], errors="coerce")
+        data = data.dropna(subset=[date_col, revenue_col])
+    except Exception as e:
+        st.error(f"❌ Error processing columns: {e}")
         return
 
-    # Prepare data for Prophet
+    if data.empty:
+        st.error("❌ No valid data available after cleaning. Please check the column selections.")
+        return
+
     df = data[[date_col, revenue_col]].copy()
     df.columns = ["ds", "y"]
 
-    try:
-        df["y"] = pd.to_numeric(df["y"], errors="coerce")
-        df = df.dropna()
-        df = df.groupby("ds").sum().reset_index()
-    except Exception as e:
-        st.error(f"Error preparing data: {e}")
-        return
-
     if len(df) < 2:
-        st.warning("Not enough data for forecasting.")
+        st.error("❌ Not enough data to build forecast. Need at least 2 rows.")
         return
 
-    # Forecasting
-    st.subheader("📅 Forecast Configuration")
-    periods = st.slider("Select number of future days to forecast", 7, 90, 30)
+    periods = st.sidebar.slider("📆 Months to Forecast", min_value=1, max_value=24, value=6)
 
-    model = Prophet()
-    model.fit(df)
+    try:
+        model = Prophet()
+        model.fit(df)
+        future = model.make_future_dataframe(periods=periods, freq="M")
+        forecast = model.predict(future)
 
-    future = model.make_future_dataframe(periods=periods)
-    forecast = model.predict(future)
+        st.subheader("📈 Forecasted Revenue")
+        fig1 = model.plot(forecast)
+        st.pyplot(fig1)
 
-    # Plotting
-    st.subheader("🔮 Forecast Results")
-    fig1 = model.plot(forecast)
-    st.pyplot(fig1)
+        st.subheader("🧠 Forecast Components")
+        fig2 = model.plot_components(forecast)
+        st.pyplot(fig2)
 
-    st.subheader("📉 Forecast Components")
-    fig2 = model.plot_components(forecast)
-    st.pyplot(fig2)
+        st.subheader("📊 Forecasted Data Preview")
+        st.dataframe(forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods))
+
+    except Exception as e:
+        st.error(f"❌ Forecasting failed: {e}")

@@ -1,76 +1,78 @@
 import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import classification_report, mean_squared_error, accuracy_score
 
 def ml_insights_page():
-    st.title("🧠 Machine Learning Insights")
+    st.title("🤖 ML Insights - Automated Machine Learning Analysis")
 
-    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-    if uploaded_file is None:
-        st.info("Please upload a CSV file to view ML insights.")
+    if "uploaded_data" not in st.session_state or st.session_state.uploaded_data is None:
+        st.warning("⚠️ Please upload your dataset on the Home page first.")
         return
 
-    try:
-        data = pd.read_csv(uploaded_file)
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        return
+    df = st.session_state.uploaded_data.copy()
 
-    if data.empty or len(data.columns) < 2:
-        st.warning("Not enough data to build a model.")
-        return
+    st.sidebar.header("⚙️ Model Settings")
 
-    # Sidebar for column selection
-    st.sidebar.header("ML Configuration")
-    target_col = st.sidebar.selectbox("Select Target Column", options=data.columns)
+    all_columns = df.columns.tolist()
+    target = st.sidebar.selectbox("🎯 Select Target Column", options=all_columns)
 
-    feature_cols = st.sidebar.multiselect(
-        "Select Feature Columns (X)", 
-        [col for col in data.columns if col != target_col],
-        default=[col for col in data.columns if col != target_col][:3]
+    features = st.sidebar.multiselect(
+        "🧮 Select Feature Columns (independent variables)",
+        options=[col for col in all_columns if col != target]
     )
 
-    if not feature_cols:
-        st.warning("Please select at least one feature column.")
+    if not features or not target:
+        st.info("ℹ️ Please select both a target and one or more feature columns.")
         return
 
+    X = df[features]
+    y = df[target]
+
     try:
-        X = data[feature_cols]
-        y = data[target_col]
-
-        # Drop missing values
-        df = pd.concat([X, y], axis=1).dropna()
-        X = df[feature_cols]
-        y = df[target_col]
-
-        # Encode target if needed
-        if y.dtype == "object":
-            y = y.astype("category").cat.codes
-
         X = pd.get_dummies(X)
+        y = pd.to_numeric(y, errors='coerce')
+        y = y.dropna()
+        X = X.loc[y.index]
+    except Exception as e:
+        st.error(f"❌ Data processing error: {e}")
+        return
 
-        # Train/test split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+    # Train/test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Train model
+    # Determine classification or regression
+    is_classification = y.nunique() <= 10 and y.dtype in [int, 'int64']
+
+    st.subheader("📊 Model Performance")
+    if is_classification:
         model = RandomForestClassifier()
         model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+        predictions = model.predict(X_test)
 
-        # Output
-        st.subheader("🔍 Model Evaluation")
-        st.write("Accuracy:", accuracy_score(y_test, y_pred))
-        st.text("Classification Report:")
-        st.text(classification_report(y_test, y_pred))
+        st.success("✅ Classification Model Trained (Random Forest)")
+        st.text("📄 Classification Report:")
+        st.text(classification_report(y_test, predictions))
+        st.metric("🔍 Accuracy", f"{accuracy_score(y_test, predictions) * 100:.2f}%")
+    else:
+        model = RandomForestRegressor()
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
 
-        # Feature importance
-        st.subheader("📊 Feature Importance")
-        importances = pd.Series(model.feature_importances_, index=X.columns)
-        st.bar_chart(importances.sort_values(ascending=False))
+        st.success("✅ Regression Model Trained (Random Forest)")
+        mse = mean_squared_error(y_test, predictions)
+        st.metric("📉 Mean Squared Error", f"{mse:.2f}")
 
-    except Exception as e:
-        st.error(f"Error during model training: {e}")
+    # Feature importance
+    st.subheader("📌 Feature Importance")
+    importances = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)
+    st.bar_chart(importances.head(10))
+
+    # Prediction Preview
+    st.subheader("🔍 Sample Predictions")
+    pred_df = pd.DataFrame({
+        "Actual": y_test,
+        "Predicted": predictions
+    }).reset_index(drop=True)
+    st.dataframe(pred_df.head(10))

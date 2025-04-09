@@ -1,19 +1,31 @@
 import streamlit as st
+import pandas as pd
 
 def home_page():
-    st.title("📊 Small Business Analytics Dashboard")
-    st.markdown("Welcome to your all-in-one dashboard for small business data insights!")
+    st.title("🏠 Home - Upload Your Business Data")
 
-    st.image("https://images.unsplash.com/photo-1556761175-4b46a572b786", use_column_width=True)
+    st.info("📌 Upload your dataset here. It will be used across all pages like Dashboard, Forecasting, ML Insights, and Export. To change or remove data, come back here.")
 
-    st.markdown("""
-        ### What You Can Do Here
-        - 📈 **Dashboard**: See trends, revenue, and growth at a glance.
-        - 🔮 **Forecasting**: Predict future performance with smart forecasting.
-        - 🧠 **ML Insights**: Get AI-powered insights from your business data.
-        - 📤 **Export**: Download reports in Excel or PDF format.
-        - ⚙️ **Settings**: Customize your experience.
+    # File uploader
+    uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
 
-        ---
-        👈 Use the sidebar to navigate through the pages.
-    """)
+    # Save to session if uploaded
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.session_state.uploaded_data = df
+            st.success("✅ Data uploaded and saved in session.")
+            st.write("📄 Here's a preview of your data:")
+            st.dataframe(df.head())
+        except Exception as e:
+            st.error(f"❌ Error reading file: {e}")
+
+    # If data is already uploaded, show clear button
+    elif "uploaded_data" in st.session_state and st.session_state.uploaded_data is not None:
+        st.success("✅ Data already loaded in session.")
+        st.dataframe(st.session_state.uploaded_data.head())
+
+        st.markdown("---")
+        if st.button("🗑️ Remove Uploaded Data"):
+            del st.session_state.uploaded_data
+            st.success("✅ Uploaded data removed. Upload new data to continue.")
