@@ -41,32 +41,4 @@ def process_uploaded_file(uploaded_file):
         return None
 
 def home_page():
-    st.title("🏠 Home - Upload Your Data")
-    st.sidebar.markdown("### Home Tools")
-
-    # Ensure uploaded data is managed only here
-    if "uploaded_data" not in st.session_state:
-        st.session_state["uploaded_data"] = None
-
-    uploaded_file = st.file_uploader("Upload your dataset (CSV)", type=["csv"])
-    if uploaded_file:
-        st.session_state["uploaded_data"] = process_uploaded_file(uploaded_file)
-        st.success("✅ Data uploaded successfully!")
-
-    # Reset functionality
-    if st.button("Reset Data"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.experimental_rerun()
-
-    if st.session_state["uploaded_data"] is not None:
-        st.dataframe(st.session_state["uploaded_data"].head())
-        st.write(f"**Rows:** {st.session_state['uploaded_data'].shape[0]}")
-        st.write(f"**Columns:** {st.session_state['uploaded_data'].shape[1]}")
-
-    # Display detected location
-    if "ipinfo" not in st.session_state:
-        st.session_state["ipinfo"] = fetch_ip_info()
-
-    ipinfo = st.session_state["ipinfo"]
-    st.sidebar.info(f"You're in 🌍 {ipinfo['country']}, {ipinfo['city']}")
+    show_home()  # Assuming show_home is your main function

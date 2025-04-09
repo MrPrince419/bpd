@@ -20,15 +20,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils import convert_currency
 
-st.set_page_config(page_title="Dashboard", page_icon="📈")
-
 def dashboard_page():
     st.title("📊 Dashboard - Business KPIs Overview")
     st.sidebar.markdown("### Dashboard Tools")
 
     # Validate dataset availability
     if "uploaded_data" not in st.session_state or st.session_state["uploaded_data"] is None:
-        st.warning("⚠️ Please upload a dataset on the Home page.")
+        st.warning("Please upload a dataset on the Home page to proceed.")
         st.stop()
 
     data = st.session_state["uploaded_data"]

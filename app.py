@@ -39,27 +39,27 @@ if "ipinfo" not in st.session_state:
 # Sidebar setup
 st.sidebar.title("Smart Insights")
 st.sidebar.markdown("Helping small businesses make data-driven decisions.")
-ipinfo = st.session_state.get("ipinfo", {})
-st.sidebar.info(f"🌍 {ipinfo.get('country', 'Unknown')}, {ipinfo.get('city', 'Unknown')}")
+st.sidebar.info(f"🌍 {st.session_state.get('ipinfo', {}).get('country', 'Unknown')}, {st.session_state.get('ipinfo', {}).get('city', 'Unknown')}")
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Version 1.0** | © 2025 Smart Insights")
 
 # Sidebar navigation
 page = st.sidebar.radio(
-    "Go to",
-    ["🏠 Home", "📊 Dashboard", "🔮 Forecasting", "🤖 ML Insights", "📁 Export", "⚙️ Settings"],
+    "Navigate",
+    ["Home", "Dashboard", "Forecasting", "ML Insights", "Export", "Settings"],
+    index=0
 )
 
 # Page routing
-if page == "🏠 Home":
+if page == "Home":
     home_page()
-elif page == "📊 Dashboard":
+elif page == "Dashboard":
     dashboard_page()
-elif page == "🔮 Forecasting":
+elif page == "Forecasting":
     forecasting_page()
-elif page == "🤖 ML Insights":
+elif page == "ML Insights":
     ml_insights_page()
-elif page == "📁 Export":
+elif page == "Export":
     export_page()
-elif page == "⚙️ Settings":
+elif page == "Settings":
     settings_page()

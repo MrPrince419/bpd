@@ -1,4 +1,5 @@
 import streamlit as st
+
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
@@ -8,12 +9,12 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from utils import convert_currency
 
-st.set_page_config(page_title="Export", page_icon="📤")
-
 # Validate dataset availability
-if st.session_state.get("uploaded_data") is None:
-    st.warning("No data uploaded. Please go to Home to upload a dataset.")
+if "uploaded_data" not in st.session_state or st.session_state["uploaded_data"] is None:
+    st.warning("Please upload a dataset on the Home page to proceed.")
     st.stop()
+
+data = st.session_state["uploaded_data"]
 
 def export_page():
     st.title("📁 Export - Download Your Data")
@@ -23,18 +24,33 @@ def export_page():
         st.warning("⚠️ No data available. Please upload data on the Home page.")
         return
 
+    # Currency selection
+    currency = st.session_state.get("currency", "USD")
+    st.write(f"Exporting data in {currency} currency.")
+
     # File format and currency selection
     file_format = st.selectbox("Select file format", ["CSV", "Excel"])
     currency = st.selectbox("Select currency", ["USD", "EUR", "GBP"])  # Add more as needed
 
     # Convert currency if needed
-    data = st.session_state["uploaded_data"]
     if currency != "USD":
         try:
             data["Converted"] = data["Amount"].apply(lambda x: convert_currency(x, currency))
         except Exception as e:
             st.error(f"❌ Currency conversion failed: {e}")
             return
+
+    # Export functionality
+    if st.button("Export"):
+        try:
+            if file_format == "CSV":
+                data.to_csv("exported_data.csv", index=False)
+                st.success("Data exported as CSV.")
+            elif file_format == "Excel":
+                data.to_excel("exported_data.xlsx", index=False)
+                st.success("Data exported as Excel.")
+        except Exception as e:
+            st.error(f"Error exporting data: {e}")
 
     # Download buttons
     csv = data.to_csv(index=False)

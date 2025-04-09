@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
-import pandas as pd  # Add this line to import pandas
+import pandas as pd
+from functools import lru_cache
 
 @st.cache_data
 def fetch_ip_info():
@@ -24,31 +25,15 @@ def get_holidays(country, year):
         print(f"Calendarific API error: {e}")
         return []
 
+@st.cache_data
 def get_ip_info():
-    """
-    Fetch IP information using the IPInfo API.
-    Returns a dictionary with relevant fields or fallback values.
-    """
     try:
-        data = fetch_ip_info()
-        return {
-            "ip": data.get("ip", "Unknown"),
-            "city": data.get("city", "Unknown"),
-            "region": data.get("region", "Unknown"),
-            "country": data.get("country", "US"),
-            "loc": data.get("loc", "0,0"),
-            "timezone": data.get("timezone", "Unknown"),
-        }
+        token = st.secrets["ipinfo_token"]
+        response = requests.get(f"https://ipinfo.io?token={token}")
+        return response.json()
     except Exception as e:
-        st.error(f"Failed to fetch IP info: {e}")
-        return {
-            "ip": "Unknown",
-            "city": "Unknown",
-            "region": "Unknown",
-            "country": "US",
-            "loc": "0,0",
-            "timezone": "Unknown",
-        }
+        st.error(f"Error fetching IP info: {e}")
+        return {}
 
 def get_filtered_data(df: pd.DataFrame) -> pd.DataFrame:
     """Remove rows with missing values."""
@@ -61,16 +46,12 @@ def is_valid_dataset(df: pd.DataFrame) -> bool:
     return not df.empty and df.select_dtypes(include=["number", "datetime", "object"]).shape[1] >= 2
 
 @st.cache_data
-def convert_currency(value: float, to_currency: str) -> float:
+def convert_currency(value, to_currency):
     try:
-        if "currency_rate" not in st.session_state or st.session_state.get("currency") != to_currency:
-            response = requests.get(f"https://api.exchangerate.host/latest?base=USD&symbols={to_currency}")
-            rate = response.json()["rates"].get(to_currency, 1.0)
-            st.session_state["currency_rate"] = rate
-            st.session_state["currency"] = to_currency
-        return value * st.session_state["currency_rate"]
+        response = requests.get(f"https://api.exchangerate.host/convert?from=USD&to={to_currency}&amount={value}")
+        return response.json().get("result", value)
     except Exception as e:
-        st.error(f"Currency conversion failed: {e}")
+        st.error(f"Error converting currency: {e}")
         return value
 
 def fetch_api_with_retry(url, headers=None, retries=3):
