@@ -2,7 +2,7 @@ import streamlit as st
 
 import pandas as pd
 from datetime import datetime
-from utils.calendarific import get_holidays
+from calendarific import get_holidays
 from utils import get_ip_info, fetch_ip_info
 import pycountry
 import emoji
