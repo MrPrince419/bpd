@@ -1,32 +1,46 @@
 import streamlit as st
-import toml
 import os
+import json
+from pathlib import Path
 
-SETTINGS_PATH = ".streamlit/secrets.toml"
+# Check if running on Streamlit Cloud
+IS_CLOUD = os.environ.get("STREAMLIT_SERVER_HEADLESS", "0") == "1"
+SETTINGS_PATH = Path("config.json")
 
 def load_settings():
-    if os.path.exists(SETTINGS_PATH):
-        return toml.load(SETTINGS_PATH)
-    return {}
+    if IS_CLOUD:
+        # Read from Streamlit secrets
+        email = st.secrets.get("email", "")
+        password = st.secrets.get("password", "")
+    elif SETTINGS_PATH.exists():
+        with open(SETTINGS_PATH, "r") as f:
+            settings = json.load(f)
+            email = settings.get("email", "")
+            password = settings.get("password", "")
+    else:
+        email = ""
+        password = ""
+    return email, password
 
 def save_settings(data):
-    os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
-    with open(SETTINGS_PATH, "w") as f:
-        toml.dump(data, f)
+    try:
+        with open(SETTINGS_PATH, "w") as f:
+            json.dump(data, f)
+    except OSError:
+        st.error("Unable to save settings (read-only file system).")
 
 def settings_page():
-    st.title("⚙️ Settings")
-    st.markdown("Update your configuration below (e.g. email report credentials).")
+    st.title("⚙️ App Settings")
+    st.write("Update your configuration below (e.g. email report credentials).")
 
-    settings = load_settings()
+    email, password = load_settings()
 
-    # Load existing values or default to blank
-    email = st.text_input("📧 Sender Email", value=settings.get("email", ""))
-    password = st.text_input("🔑 Email Password", value=settings.get("password", ""), type="password")
+    email = st.text_input("📧 Sender Email", value=email)
+    password = st.text_input("🔐 Email Password", value=password, type="password")
 
     if st.button("💾 Save Settings"):
-        if not email or not password:
-            st.error("Both fields are required.")
+        if IS_CLOUD:
+            st.warning("Settings cannot be saved on Streamlit Cloud. Use `.streamlit/secrets.toml`.")
         else:
             save_settings({"email": email, "password": password})
             st.success("Settings saved successfully!")

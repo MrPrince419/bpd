@@ -1,73 +1,68 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+
+# Moved utility function inside
+def get_filtered_data(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.dropna(inplace=True)
+    return df
 
 def dashboard_page():
     st.title("📊 Business Dashboard")
 
-    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-    if uploaded_file is None:
-        st.info("Please upload a CSV file to see the dashboard.")
+    if 'data' not in st.session_state:
+        st.warning("Please upload data in the Home page.")
         return
 
-    try:
-        data = pd.read_csv(uploaded_file)
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        return
+    data = st.session_state['data']
+    data = get_filtered_data(data)
 
-    # Column selectors
-    st.sidebar.header("Column Configuration")
+    st.sidebar.subheader("Column Configuration")
     date_col = st.sidebar.selectbox("Select Date Column", options=data.columns)
     revenue_col = st.sidebar.selectbox("Select Revenue Column", options=data.columns)
 
-    # Convert date column
-    data[date_col] = pd.to_datetime(data[date_col], errors='coerce')
-    data = data.dropna(subset=[date_col, revenue_col])
-
-    if data.empty:
-        st.warning("Your dataset doesn't contain any valid date or revenue entries.")
+    try:
+        data[date_col] = pd.to_datetime(data[date_col], errors='coerce')
+    except Exception as e:
+        st.error(f"Error converting {date_col} to datetime: {e}")
         return
 
-    # Filter by date range
-    min_date, max_date = data[date_col].min(), data[date_col].max()
-    date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date],
-                                       min_value=min_date, max_value=max_date)
+    if data[date_col].isna().all():
+        st.error("No valid dates found in the dataset.")
+        return
+
+    data = data.dropna(subset=[date_col])
+    min_date = data[date_col].min()
+    max_date = data[date_col].max()
+    date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
     if len(date_range) != 2:
-        st.warning("Please select a valid start and end date.")
+        st.warning("Please select a valid date range.")
         return
 
     start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-    filtered_data = data[(data[date_col] >= start_date) & (data[date_col] <= end_date)]
+    current_data = data[(data[date_col] >= start_date) & (data[date_col] <= end_date)]
 
-    # Current and previous month comparison
-    current_month = filtered_data[date_col].max().month
-    previous_month = current_month - 1
+    if current_data.empty:
+        st.warning("No data available for selected date range.")
+        return
 
-    current_data = filtered_data[filtered_data[date_col].dt.month == current_month]
-    previous_data = filtered_data[filtered_data[date_col].dt.month == previous_month]
+    if not pd.api.types.is_numeric_dtype(current_data[revenue_col]):
+        st.error("Selected revenue column is not numeric.")
+        return
 
+    st.subheader("🔢 Key Metrics")
     current_sum = current_data[revenue_col].sum()
-    previous_sum = previous_data[revenue_col].sum()
-    change = ((current_sum - previous_sum) / previous_sum * 100) if previous_sum else 0
+    avg_revenue = current_data[revenue_col].mean()
+    st.metric("Total Revenue", f"${current_sum:,.2f}")
+    st.metric("Average Revenue", f"${avg_revenue:,.2f}")
 
-    st.metric(label="📅 Current Month Revenue", value=f"${current_sum:,.2f}", delta=f"{change:.2f}%")
+    st.subheader("📈 Revenue Over Time")
+    daily_revenue = current_data.groupby(current_data[date_col].dt.to_period("D"))[revenue_col].sum().reset_index()
+    daily_revenue[date_col] = daily_revenue[date_col].dt.to_timestamp()
+    fig = px.line(daily_revenue, x=date_col, y=revenue_col, labels={revenue_col: "Revenue"})
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Line chart
-    st.subheader("📉 Revenue Over Time")
-    time_series = filtered_data.groupby(filtered_data[date_col].dt.to_period("M"))[revenue_col].sum()
-    time_series.index = time_series.index.to_timestamp()
-    st.line_chart(time_series)
-
-    # Top 10 days
-    st.subheader("🏆 Top 10 Revenue Days")
-    top_days = filtered_data.groupby(data[date_col].dt.date)[revenue_col].sum().nlargest(10)
-    st.bar_chart(top_days)
-
-    # Revenue distribution
-    st.subheader("📊 Revenue Distribution")
-    fig, ax = plt.subplots()
-    sns.histplot(filtered_data[revenue_col], kde=True, ax=ax)
-    st.pyplot(fig)
+    with st.expander("📋 View Filtered Data"):
+        st.dataframe(current_data)
