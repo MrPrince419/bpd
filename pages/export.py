@@ -6,64 +6,44 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from utils import convert_currency
 
+st.set_page_config(page_title="Export", page_icon="📤")
+
+# Validate dataset availability
+if st.session_state.get("uploaded_data") is None:
+    st.warning("No data uploaded. Please go to Home to upload a dataset.")
+    st.stop()
 
 def export_page():
-    st.header("📤 Export & Share Insights")
+    st.title("📁 Export - Download Your Data")
+    st.sidebar.markdown("### Export Options")
 
-    # Check if data is uploaded
-    if "data" not in st.session_state or st.session_state["data"] is None:
-        st.warning("⚠️ Please upload data on the Home page first.")
+    if st.session_state["uploaded_data"] is None:
+        st.warning("⚠️ No data available. Please upload data on the Home page.")
         return
 
-    data = st.session_state["data"]
+    # File format and currency selection
+    file_format = st.selectbox("Select file format", ["CSV", "Excel"])
+    currency = st.selectbox("Select currency", ["USD", "EUR", "GBP"])  # Add more as needed
 
-    # ---- Download Section ----
-    st.subheader("⬇️ Download Your Dataset")
-    file_type = st.selectbox("Select File Format", ["CSV", "Excel"])
-
-    if file_type == "CSV":
-        csv = data.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name="smart_insights_data.csv",
-            mime="text/csv"
-        )
-    else:
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            data.to_excel(writer, index=False, sheet_name="SmartInsights")
-        st.download_button(
-            label="Download Excel",
-            data=buffer.getvalue(),
-            file_name="smart_insights_data.xlsx",
-            mime="application/vnd.ms-excel"
-        )
-
-    st.divider()
-
-    # ---- Email Section ----
-    st.subheader("📧 Email Your Report")
-    st.markdown("Easily send your current dataset as an Excel attachment.")
-
-    recipient = st.text_input("Recipient Email")
-    subject = st.text_input("Email Subject", "Smart Insights Business Report")
-    body = st.text_area(
-        "Email Body",
-        "Hi,\n\nPlease find attached your business analytics report.\n\nBest regards,\nSmart Insights"
-    )
-
-    if st.button("Send Email"):
-        if not recipient:
-            st.error("Recipient email is required.")
-            return
+    # Convert currency if needed
+    data = st.session_state["uploaded_data"]
+    if currency != "USD":
         try:
-            send_email_with_attachment(recipient, subject, body, data)
-            st.success("✅ Email sent successfully!")
+            data["Converted"] = data["Amount"].apply(lambda x: convert_currency(x, currency))
         except Exception as e:
-            st.error(f"❌ Failed to send email: {str(e)}")
+            st.error(f"❌ Currency conversion failed: {e}")
+            return
 
+    # Download buttons
+    csv = data.to_csv(index=False)
+    st.download_button("Download CSV", csv, "data.csv", "text/csv")
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        data.to_excel(writer, index=False, sheet_name="Sheet1")
+    st.download_button("Download Excel", output.getvalue(), "data.xlsx", "application/vnd.ms-excel")
 
 def send_email_with_attachment(to, subject, body, df):
     from_email = st.secrets["EMAIL"]
