@@ -1,5 +1,6 @@
 import requests
 import streamlit as st
+import pandas as pd  # Add this line to import pandas
 
 @st.cache_data
 def fetch_ip_info():
