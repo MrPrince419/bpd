@@ -1,12 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-
-# Moved utility function inside
-def get_filtered_data(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.dropna(inplace=True)
-    return df
+from utils import get_filtered_data  # Updated import
 
 def dashboard_page():
     st.title("📊 Business Dashboard")
