@@ -1,12 +1,8 @@
 import streamlit as st
-
 import pandas as pd
 from datetime import datetime
-from utils.calendarific import get_holidays
-from utils import get_ip_info, fetch_ip_info
+from utils import get_holidays, get_ip_info
 import pycountry
-import emoji
-from ipinfo_tools import get_location_info
 
 def settings_page():
     st.title("⚙️ Settings")
@@ -26,13 +22,16 @@ def settings_page():
     selected_currency = st.selectbox("Select Currency", options=currencies)
     st.session_state["currency"] = selected_currency
 
-    year = st.number_input("Select Year", min_value=2000, max_value=2100, value=2023)
+    year = st.number_input("Select Year", min_value=2000, max_value=2100, value=datetime.now().year)
     if st.button("Fetch Holidays"):
-        holidays = get_holidays(country=selected_country, year=year)
-        if holidays.empty:
-            st.warning("No holidays found for the selected country and year.")
-        else:
-            st.table(holidays)
+        try:
+            holidays = get_holidays(country=selected_country, year=year)
+            if not holidays:
+                st.warning("No holidays found for the selected country and year.")
+            else:
+                st.table(holidays)
+        except Exception as e:
+            st.error(f"Error fetching holidays: {e}")
 
     if st.button("Save Settings"):
         st.success("✅ Settings saved!")

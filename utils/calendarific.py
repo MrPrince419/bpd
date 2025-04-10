@@ -34,9 +34,10 @@ def get_holidays(country=None, year=None):
 
     url = "https://calendarific.com/api/v2/holidays"
     params = {"api_key": api_key, "country": country, "year": year}
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
         return response.json().get("response", {}).get("holidays", [])
-    else:
-        st.error("Failed to fetch holidays.")
+    except Exception as e:
+        st.error(f"Failed to fetch holidays: {e}")
         return []

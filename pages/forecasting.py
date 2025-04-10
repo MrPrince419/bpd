@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="Forecasting", page_icon="🔮")
+
 import pandas as pd
 from prophet import Prophet
 import matplotlib.pyplot as plt

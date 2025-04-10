@@ -16,6 +16,8 @@
 # 13. Optimize for clarity, user experience, and no repeated uploads or broken logic. Each page should load and function independently but share session state.
 
 import streamlit as st
+st.set_page_config(page_title="Dashboard", page_icon="📊")
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from utils import convert_currency

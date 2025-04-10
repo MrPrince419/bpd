@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="ML Insights", page_icon="🤖")
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
