@@ -2,7 +2,7 @@ import streamlit as st
 
 import pandas as pd
 from datetime import datetime
-from calendarific import get_holidays
+from utils.calendarific import get_holidays
 from utils import get_ip_info, fetch_ip_info
 import pycountry
 import emoji
@@ -28,8 +28,11 @@ def settings_page():
 
     year = st.number_input("Select Year", min_value=2000, max_value=2100, value=2023)
     if st.button("Fetch Holidays"):
-        holidays = get_holidays(selected_country, year)
-        st.table(holidays)
+        holidays = get_holidays(country=selected_country, year=year)
+        if holidays.empty:
+            st.warning("No holidays found for the selected country and year.")
+        else:
+            st.table(holidays)
 
     if st.button("Save Settings"):
         st.success("✅ Settings saved!")
